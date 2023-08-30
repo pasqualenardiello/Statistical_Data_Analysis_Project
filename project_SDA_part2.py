@@ -45,10 +45,10 @@ def dimensionality_reduction(X,min_variance=0.9):
     # Find the number of components for at least min variance
     n_components_min_variance = np.argmax(cumulative_variance_scaled >= min_variance) + 1
     # Implementare il codice per la riduzione della dimensionalità
-    pca_reduced = PCA(n_components_min_variance)
-    features_reduced = pca_reduced.fit_transform(features_standardized)
+    pca_reducer = PCA(n_components_min_variance)
+    features_reduced = pca_reducer.fit_transform(features_standardized)
 
-    return features_standardized
+    return features_reduced,pca_reducer
     
 
 def standardization(features):
@@ -93,10 +93,16 @@ def gradient_descent(X, y, theta, alpha, epochs):
 
 #Prediction function
 def predict(X, theta):
-    return sigmoid(np.dot(X, theta)) >= 0.5
+    predictions = []
+    for x_value in X:
+        if sigmoid(np.dot(x_value, theta)) >= 0.5:
+            predictions.append(1.0)
+        else:
+            predictions.append(-1.0)
+    return predictions
 
 
-def logistic_classifer(X, y, step_size=0.1,epochs=1000):
+def logistic_classifer(X, y, step_size=0.1,epochs=10):
 
     # Add a bias term to the feature matrix
     X_bias = np.c_[np.ones(X.shape[0]), X]
@@ -119,9 +125,11 @@ def evaluate_step_sizes(X,y,step_sizes):
 
     for step_size in step_sizes:
         X_bias,theta = logistic_classifer(X,y,step_size=step_size)
-        # Predictions
         y_pred = predict(X_bias, theta)
-        accuracy = np.mean(y_pred == y)
+        vett = [1 if y_pred[i]==y[i] else 0 for i in range(len(y))]
+
+        accuracy = sum(vett)/len(vett)
+        print(accuracy)
         # Store the best model
         if accuracy > highest_accuracy:
             highest_accuracy = accuracy
@@ -135,22 +143,43 @@ def evaluate_step_sizes(X,y,step_sizes):
     return best_X_bias, best_theta
 
 # Inference function for new X values
-def logistic_inference(new_X, best_theta):
+def logistic_inference(X_test, best_theta):
     # Add a bias term to the new feature matrix
-    new_X_bias = np.c_[np.ones(len(new_X)), new_X]
+    #new_X_bias = np.c_[np.ones(len(new_X)), new_X]
     
     # Predictions using the best theta
-    new_y_pred = predict(new_X_bias, best_theta)
+    #new_y_pred = predict(new_X_bias, best_theta)
+
+    predictions = []
+    for i,x_value in enumerate(X_test):
+        res = x_value*best_theta
+        print("=============")
+        print(x_value,best_theta)
+        if res > 0:
+            predictions.append(1)
+        else:
+            predictions.append(-1)
+
+    print(len(predictions))
+
+    return predictions
     
-    return new_y_pred
+    
+
 # 6. Regola di decisione
 def decision_rule(predictions):
     # Implementare la regola di decisione
-    pass
+    binaries = []
+    for prediction in predictions:
+        if prediction == -1:
+            binaries.append(0)
+        else:
+            binaries.append(1)
+    return binaries
 
 # 7. Conversione in ASCII
 def to_ascii(binary_bytes):
-    # Implementare la conversione in ASCII
+    print(binary_bytes)
     pass
 
 if __name__ == "__main__":
@@ -163,13 +192,21 @@ if __name__ == "__main__":
     test_file_name = "Gruppo 3/test.mat"
     x_test,y_test = load_data(file_name=test_file_name)
     #reduce dimensionality
-    x_train_reduced = dimensionality_reduction(x_train)
+    x_train_reduced,pca_reducer= dimensionality_reduction(x_train)
+    print("len x train reduced:",len(x_train_reduced[0]))
     #step sizes
     step_sizes = [0.00001,0.0001,0.001, 0.01, 0.1, 1]
     #find best logistic classifier
     best_bias,best_beta = evaluate_step_sizes(x_train_reduced,y_train,step_sizes)
+    
+    best_beta = best_beta[1:]
+
+    print(f"best beta:{best_beta}")
+    x_test_reduced = pca_reducer.transform(x_test)
+    print("len x test reduced:",len(x_test_reduced[0]))
     #predictions on test data
-    predictions = logistic_inference(x_test,best_beta)
+    predictions = logistic_inference(x_test_reduced,best_beta)
+    print(predictions)
     #convert predictions to binary
     binary_bytes = decision_rule(predictions)
     #convert binary to ascii
