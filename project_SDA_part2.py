@@ -5,8 +5,10 @@ import os
 from sklearn import preprocessing
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
-# 1. Caricamento dei dati
+
+#Caricamento dei dati
 def load_data(file_name):
 
     #if mat not already in extension,add it
@@ -22,14 +24,15 @@ def load_data(file_name):
             x_raw = raw[:-1]
             y_raw = raw[-1:]
             x.append(x_raw)
-            y.append(y_raw)
+            y.append(y_raw[0])
         else: 
-            x.append(raw)
+            x.append(raw[1:])
             y = None
             
     return x,y
 
-# 2. Riduzione della dimensionalità
+
+#Riduzione della dimensionalità
 def dimensionality_reduction(X,min_variance=0.9):
 
     features_standardized = standardization(X)
@@ -56,6 +59,7 @@ def standardization(features):
 
     return features_standardized
 
+
 def plot_variance(variance, cum_variance, interval, x_label, y_label,title):
     plt.bar(interval, variance, alpha = 0.5, align='center', label = 'Individual variance')
     plt.step(interval, cum_variance, where='mid', label = 'Cumulative variance')
@@ -66,16 +70,79 @@ def plot_variance(variance, cum_variance, interval, x_label, y_label,title):
     plt.show()
 
 
-# 4. Valutazione dello step-size
-def evaluate_step_size():
-    # Implementare il codice per valutare diverse scelte dello step-size
-    pass
+# Sigmoid function
+def sigmoid(z):
+    z = np.clip(z, -500, 500)
+    return 1 / (1 + np.exp(-z))
 
-# 5. Predizione
-def make_predictions(test_data, model):
-    # Implementare il codice per fare predizioni
-    pass
+# Cost function
+def cost_function(y, h):
+    return (-y * np.log(h) - (1 - y) * np.log(1 - h)).mean()
 
+
+# Gradient Descent
+def gradient_descent(X, y, theta, alpha, epochs):
+    m = len(y)
+    for _ in tqdm(range(epochs)):
+        z = np.dot(X, theta)
+        h = sigmoid(z)
+        gradient = np.dot(X.T, np.subtract(h,y)) / m
+        theta -= alpha * gradient
+    return theta
+
+
+#Prediction function
+def predict(X, theta):
+    return sigmoid(np.dot(X, theta)) >= 0.5
+
+
+def logistic_classifer(X, y, step_size=0.1,epochs=1000):
+
+    # Add a bias term to the feature matrix
+    X_bias = np.c_[np.ones(X.shape[0]), X]
+   
+    # Initialize theta for each step size
+    theta = np.zeros(X_bias.shape[1])
+
+    # Train the model with the current step size
+    theta = gradient_descent(X_bias, y, theta, step_size, epochs)
+    
+    return X_bias,theta
+
+
+def evaluate_step_sizes(X,y,step_sizes):
+
+    x_bias_best = None
+    theta_best = None
+    highest_accuracy = 0
+    best_step_size = None
+
+    for step_size in step_sizes:
+        X_bias,theta = logistic_classifer(X,y,step_size=step_size)
+        # Predictions
+        y_pred = predict(X_bias, theta)
+        accuracy = np.mean(y_pred == y)
+        # Store the best model
+        if accuracy > highest_accuracy:
+            highest_accuracy = accuracy
+            best_theta = theta
+            best_X_bias = X_bias
+            best_step_size = step_size
+
+        print(f"Logistic Classifier Accuracy with step size {step_size}: {accuracy}")
+   
+    print(f"Best Logistic Classifier Accuracy with step size {best_step_size}: {accuracy}")
+    return best_X_bias, best_theta
+
+# Inference function for new X values
+def logistic_inference(new_X, best_theta):
+    # Add a bias term to the new feature matrix
+    new_X_bias = np.c_[np.ones(len(new_X)), new_X]
+    
+    # Predictions using the best theta
+    new_y_pred = predict(new_X_bias, best_theta)
+    
+    return new_y_pred
 # 6. Regola di decisione
 def decision_rule(predictions):
     # Implementare la regola di decisione
@@ -97,10 +164,12 @@ if __name__ == "__main__":
     x_test,y_test = load_data(file_name=test_file_name)
     #reduce dimensionality
     x_train_reduced = dimensionality_reduction(x_train)
-    #fit classifier
-    logistic_classifier = logistic_classifier(x_train_reduced,y_train)
+    #step sizes
+    step_sizes = [0.00001,0.0001,0.001, 0.01, 0.1, 1]
+    #find best logistic classifier
+    best_bias,best_beta = evaluate_step_sizes(x_train_reduced,y_train,step_sizes)
     #predictions on test data
-    predictions = make_predictions(x_test,logistic_classifier)
+    predictions = logistic_inference(x_test,best_beta)
     #convert predictions to binary
     binary_bytes = decision_rule(predictions)
     #convert binary to ascii
