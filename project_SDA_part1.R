@@ -11,6 +11,7 @@ print(data)
 library(glmnet)
 library(caret)
 library(leaps)
+library(corrplot) 
 
 # Set random seed for reproducibility
 set.seed(123)
@@ -39,10 +40,13 @@ cat("Length of x_test is ", nrow(x_test), "\n")
 cat("Length of y_test is ", length(y_test), "\n")
 
 
+#CORRELATION MATRIX
+corData <- round(cor(x_train), digits = 2) 
+corrplot(corData, cex = 0.22, show.legend = TRUE, main = "Correlation Matrix") 
+pdf(file="Images/R/Correlation_Matrix.pdf", width=26, height=15)
 
 
 # MULTIPLE LINEAR REGRESSION
-
 #fit multiple linear regression model
 multiple_lr_fit <- lm(y_train ~ ., data = data_frame_train)
 # Summary of the fit
@@ -130,7 +134,7 @@ ascii_codes <- round(best_model_coef / 100)
 characters <- intToUtf8(ascii_codes)
 cat("clue using bestsubset selection:",characters)
 
-
+#FORWARD SELECTION
 
 
 #RIDGE AND LASSO 
